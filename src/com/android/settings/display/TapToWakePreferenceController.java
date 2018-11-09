@@ -19,6 +19,12 @@ import android.provider.Settings;
 import androidx.preference.Preference;
 import androidx.preference.SwitchPreference;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+
 import com.android.settings.core.PreferenceControllerMixin;
 import com.android.settingslib.core.AbstractPreferenceController;
 
@@ -44,16 +50,29 @@ public class TapToWakePreferenceController extends AbstractPreferenceController 
 
     @Override
     public void updateState(Preference preference) {
-        int value = Settings.Secure.getInt(
-                mContext.getContentResolver(), Settings.Secure.DOUBLE_TAP_TO_WAKE, 0);
-        ((SwitchPreference) preference).setChecked(value != 0);
+        ((SwitchPreference) preference).setChecked(readState());
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        boolean value = (Boolean) newValue;
         Settings.Secure.putInt(
-                mContext.getContentResolver(), Settings.Secure.DOUBLE_TAP_TO_WAKE, value ? 1 : 0);
+                mContext.getContentResolver(), Settings.Secure.DOUBLE_TAP_TO_WAKE, (Boolean) newValue ? 1 : 0);
         return true;
+    }
+
+    private static boolean readState() {
+        BufferedReader br;
+        String line = "0";
+        try {
+            br = new BufferedReader(new FileReader("/sys/android_touch/doubletap2wake"), 512);
+            try {
+                line = br.readLine();
+            } finally {
+                br.close();
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return line.contains("1");
     }
 }
